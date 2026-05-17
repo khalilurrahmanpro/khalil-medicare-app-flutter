@@ -62,7 +62,7 @@ Future<void> updateStock(dynamic medId, String newQty) async {
   final String url = "$baseUrl/medicine/$medId/update-stock/"; 
 
   try {
-    print("অনুরোধ পাঠানো হচ্ছে: $url"); // ডিবাগ করার জন্য
+    print("অনুরোধ পাঠানো হচ্ছে: $url"); 
 
     final response = await http.patch(
       Uri.parse(url),
@@ -71,14 +71,13 @@ Future<void> updateStock(dynamic medId, String newQty) async {
         'Content-Type': 'application/json',
       },
       body: json.encode({
-        // আপনার ব্যাকএন্ডের ভিউ (views.py) অনুযায়ী ফিল্ডের নাম 'stock_quantity' হতে হবে
         "stock_quantity": int.parse(newQty), 
       }),
     );
 
     if (response.statusCode == 200 || response.statusCode == 204) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("স্টক সফলভাবে আপডেট হয়েছে!"), backgroundColor: Colors.green),
+        const SnackBar(content: Text("stock update successfull!"), backgroundColor: Colors.green),
       );
       fetchMedicines(); // লিস্ট রিফ্রেশ করা
     } else {
@@ -115,7 +114,7 @@ Future<void> updateStock(dynamic medId, String newQty) async {
                 });
               },
               decoration: InputDecoration(
-                hintText: "সার্চ মেডিসিন...",
+                hintText: "search medicine...",
                 prefixIcon: const Icon(Icons.search, color: logoRed),
                 filled: true,
                 fillColor: Colors.white,

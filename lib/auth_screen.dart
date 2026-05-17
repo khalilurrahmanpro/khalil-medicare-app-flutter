@@ -16,61 +16,64 @@ class _AuthScreenState extends State<AuthScreen> {
 
   // কন্ট্রোলারগুলো
   final TextEditingController userController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController emailController = TextEditingController(); 
   final TextEditingController passController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
 
   // আপনার Render এর এপিআই লিঙ্ক
   final String apiUrl = "https://khalil-medicare-app-backend.onrender.com/api";
+ 
+Future<void> _submitAuth() async {
+  if (!_formKey.currentState!.validate()) return;
 
-  // এপিআই কল করার ফাংশন
-  Future<void> _submitAuth() async {
-    if (!_formKey.currentState!.validate()) return;
+  setState(() => isLoading = true);
+  String endpoint = isLogin ? "/login/" : "/register/";
+  String url = apiUrl + endpoint;
 
-    setState(() => isLoading = true);
+  try {
+    Map<String, dynamic> bodyData = isLogin
+        ? {
+            'username': userController.text.trim(),
+            'password': passController.text.trim(),
+          }
+        : {
+            'username': userController.text.trim(),
+            'email': emailController.text.trim(),
+            'password': passController.text.trim(),
+            'phone': phoneController.text.trim(),
+          };
 
-    // লগইন হলে 'login' এন্ডপয়েন্ট, না হলে 'register' এন্ডপয়েন্ট
-    String endpoint = isLogin ? "/login/" : "/register/";
-    String url = apiUrl + endpoint;
+    // --- এই অংশটুকু খেয়াল করুন ---
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        "Content-Type": "application/json", // এটি অবশ্যই লাগবে
+        "Accept": "application/json",
+      },
+      body: json.encode(bodyData), // ডাটাকে JSON স্ট্রিং বানিয়ে পাঠাতে হবে
+    );
+    // ----------------------------
 
-    try {
-      Map<String, String> bodyData = isLogin
-          ? {
-              'username': userController.text.trim(),
-              'password': passController.text.trim(),
-            }
-          : {
-              'username': userController.text.trim(),
-              'email': emailController.text.trim(),
-              'password': passController.text.trim(),
-              'phone': phoneController.text.trim(),
-            };
+    print("Status Code: ${response.statusCode}");
+    print("Response: ${response.body}");
 
-      final response = await http.post(
-        Uri.parse(url),
-        body: bodyData,
-      );
+    final data = json.decode(response.body);
 
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // টোকেন সেভ করা
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', data['token']);
-
-        if (!mounted) return;
-        // সফল হলে সরাসরি হোম পেজে পাঠিয়ে দেওয়া
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        String errorMsg = data['error'] ?? "Authentication failed!";
-        _showError(errorMsg);
-      }
-    } catch (e) {
-       _showError(e.toString());
-    } finally {
-      if (mounted) setState(() => isLoading = false);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', data['token']);
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      _showError(data['error'] ?? "Login failed!");
     }
+  } catch (e) {
+    print("Error: $e");
+    _showError("Connection error!");
+  } finally {
+    if (mounted) setState(() => isLoading = false);
   }
+}
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
