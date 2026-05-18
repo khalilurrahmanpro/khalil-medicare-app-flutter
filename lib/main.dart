@@ -95,9 +95,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       print("Current User: ${userData['username']}"); // এটি ল্যাপটপের কনসোলে চেক করুন
       
       setState(() { 
-        // ইউজারনেম admin অথবা Admin যাই হোক যেন কাজ করে
-        isAdmin = (userData['username'].toString().toLowerCase() == 'admin'); 
-      });
+  isAdmin = (userData['username'].toString().toLowerCase() == 'kha_lil_medi_care' || 
+             userData['is_superuser'] == true); 
+});
     }
   } catch (e) { print("Error checking admin: $e"); }
 }
