@@ -75,10 +75,6 @@ class InvoiceService {
                 headers: ['Name', 'Box/Strip', 'Qty', 'Main Price', 'Subtotal'],
                 data: items.map((item) {
                   
-                  // --- গুরুত্বপূর্ণ লজিক: ইউনিট হ্যান্ডলিং ---
-                  // আপনার কার্ট আইটেমে ইউনিটের নাম যে Key-তে আছে সেটি এখানে দিন। 
-                  // আমি এখানে item['unit_type'] ধরেছি। যদি আপনার 'unit' বা অন্য কিছু হয় তবে সেটা লিখে দিন।
-                  // ===== Unit Detect Logic =====
 
 String displayUnit = "";
 

@@ -750,7 +750,7 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(controller: addrController, decoration: const InputDecoration(hintText: "ডেলিভারি ঠিকানা", prefixIcon: Icon(Icons.location_on, color: logoRed))),
+          TextField(controller: addrController, decoration: const InputDecoration(hintText: "Please add your address", prefixIcon: Icon(Icons.location_on, color: logoRed))),
           const SizedBox(height: 15),
           // পেমেন্ট অপশনস
           Row(
@@ -1332,7 +1332,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
   Widget _buildOrderCard(dynamic order) {
     // আপনার ব্যাকএন্ড অনুযায়ী medicine_names ফিল্ড ব্যবহার করা হয়েছে
-    String medicines = order['medicine_names']?.toString() ?? "ওষুধের নাম পাওয়া যায়নি";
+    String medicines = order['medicine_names']?.toString() ?? "";
     String price = order['total_price']?.toString() ?? "0.0";
     String status = order['status']?.toString() ?? "Pending";
     String id = order['id']?.toString() ?? "0";
@@ -1393,135 +1393,122 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 }
 
-// --- নতুন এবং উন্নত অর্ডার ডিটেইল স্ক্রিন ---
 class OrderDetailScreen extends StatelessWidget {
   final dynamic order;
   const OrderDetailScreen({super.key, required this.order});
 
   @override
   Widget build(BuildContext context) {
-    // ডাটা সেটআপ
+    // --- ডাটা পার্সিং ---
     String orderId = order['id']?.toString() ?? "00";
-    String status = order['status']?.toString() ?? "Pending";
     String totalPrice = order['total_price']?.toString() ?? "0";
-    String address = order['address']?.toString() ?? "ঠিকানা পাওয়া যায়নি";
-    String itemsText = order['medicine_names']?.toString() ?? "";
-    List<String> itemsList = itemsText.split(', ');
+    String address = order['address']?.toString() ?? "N/A";
+    String name = order['username']?.toString() ?? "Customer";
+
+    // ওষুধের লিস্ট বের করা
+    List<dynamic> itemsList = [];
+    if (order['items'] != null && order['items'] is List && (order['items'] as List).isNotEmpty) {
+      itemsList = order['items'];
+    } else if (order['medicine_names'] != null && order['medicine_names'] != "") {
+      itemsList = order['medicine_names'].toString().split(',');
+    }
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Digital Invoice", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        centerTitle: true,
-      ),
+      backgroundColor: const Color(0xFFF3F5F7),
+      appBar: AppBar(title: const Text("Invoice Details"), backgroundColor: logoRed, foregroundColor: Colors.white),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // ১. টপ সেকশন (ব্র্যান্ডিং)
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 60),
-                  const SizedBox(height: 10),
-                  Text("ORDER #$orderId", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text("Status: $status", style: TextStyle(color: status.toLowerCase() == 'delivered' ? Colors.green : Colors.orange, fontWeight: FontWeight.bold)),
-                ],
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+          child: Column(
+            children: [
+              // হেডার অংশ
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text("KHALIL MEDICARE", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: logoRed)),
               ),
-            ),
-            
-            const Divider(thickness: 1, indent: 20, endIndent: 20),
 
-            // ২. কাস্টমার ডিটেইলস কার্ড
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Delivery Address:", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 5),
-                  Text(address, style: const TextStyle(fontSize: 16)),
-                ],
-              ),
-            ),
-
-            // ৩. প্রফেশনাল বিলিং টেবিল
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  // টেবিল হেডার
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(color: Color(0xFFE9ECEF), borderRadius: BorderRadius.vertical(top: Radius.circular(15))),
-                    child: const Row(
-                      children: [
-                        Expanded(flex: 4, child: Text("Item", style: TextStyle(fontWeight: FontWeight.bold))),
-                        Expanded(flex: 2, child: Text("Qty", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))),
-                        Expanded(flex: 2, child: Text("Total", textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold))),
-                      ],
-                    ),
-                  ),
-                  // আইটেম লিস্ট
-                  ...itemsList.map((item) {
-                    // Napa (Box x 2) -> আলাদা করা
-                    String name = item.split(' (')[0];
-                    String qty = item.contains('(') ? item.split('(')[1].split(')')[0] : "1";
-                    
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      child: Row(
+              // আইটেম টেবিল
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade100)),
+                child: Column(
+                  children: [
+                    // টেবিল হেডার
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      color: Colors.grey[100],
+                      child: const Row(
                         children: [
-                          Expanded(flex: 4, child: Text(name, style: const TextStyle(fontSize: 13))),
-                          Expanded(flex: 2, child: Text(qty, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Colors.blueGrey))),
-                          const Expanded(flex: 2, child: Text("-", textAlign: TextAlign.right)),
+                          Expanded(flex: 5, child: Text("Medicine (Unit)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                          Expanded(flex: 2, child: Text("Qty", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                          Expanded(flex: 2, child: Text("Total", textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
                         ],
                       ),
-                    );
-                  }).toList(),
-                  
-                  const Divider(height: 1),
-
-                  // সাবটোটাল সেকশন
-                  Padding(
-                    padding: const EdgeInsets.all(15),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Total Payable Amount", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text("৳$totalPrice", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: logoRed)),
-                      ],
                     ),
-                  ),
-                ],
+
+                    // আইটেম লিস্ট ম্যাপিং
+                    ...itemsList.map((item) {
+                      String medicineName = "N/A";
+                      String unit = "";
+                      String qty = "1";
+                      String price = "-";
+
+                      if (item is Map) {
+                        medicineName = item['medicine_name'] ?? item['name'] ?? "N/A";
+                        unit = item['unit_type'] ?? item['unit'] ?? "";
+                        qty = item['quantity']?.toString() ?? "1";
+                        if (item['price'] != null) {
+                           price = "৳${(double.parse(item['price'].toString()) * int.parse(qty)).toStringAsFixed(1)}";
+                        }
+                      } else {
+                        // স্ট্রিং পার্সিং লজিক: "Napa (Box x 2)" থেকে ডাটা বের করা
+                        String raw = item.toString().trim();
+                        if (raw.contains('(')) {
+                          medicineName = raw.split(' (')[0].trim(); // Napa
+                          String info = raw.split('(')[1].split(')')[0]; // Box x 2
+                          unit = info.split(' x ')[0]; // Box
+                          qty = info.split(' x ').last; // 2
+                        } else {
+                          medicineName = raw;
+                        }
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                        child: Row(
+                          children: [
+                            // নামের পাশে ব্র্যাকেটে Box অথবা Strip দেখাবে
+                            Expanded(
+                              flex: 5, 
+                              child: Text(
+                                "$medicineName ${unit.isNotEmpty ? '($unit)' : ''}", 
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)
+                              )
+                            ),
+                            Expanded(flex: 2, child: Text(qty, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                            Expanded(flex: 2, child: Text(price, textAlign: TextAlign.right, style: const TextStyle(fontSize: 13))),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 30),
-
-            // ৪. ফুটার মেসেজ
-            const Icon(Icons.qr_code_2, size: 80, color: Colors.black54),
-            const SizedBox(height: 10),
-            const Text("Thank you for choosing Khalil Medicare", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-      // ৫. হেল্পলাইন বাটন
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(20),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: logoRed, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), minimumSize: const Size(double.infinity, 50)),
-          onPressed: () => launchUrl(Uri.parse("tel:+01700920629")),
-          child: const Text("Need Help? Contact Us", style: TextStyle(fontWeight: FontWeight.bold)),
+              // গ্র্যান্ড টোটাল
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Grand Total", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text("৳$totalPrice", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: logoRed)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
