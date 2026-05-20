@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:io'; 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart'; 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'auth_screen.dart'; 
@@ -17,6 +17,31 @@ const String baseUrl = "https://khalil-medicare-app-backend.onrender.com/api";
 bool isBoxMode = true; 
 List<Map<String, dynamic>> cartItems = [];
 ValueNotifier<int> cartUpdateNotifier = ValueNotifier<int>(0);
+// --- কার্ট ফোনে সেভ করার ফাংশন ---
+Future<void> saveCartToPrefs() async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String encodedCart = json.encode(cartItems);
+    await prefs.setString('saved_cart', encodedCart);
+  } catch (e) {
+    print("Error saving cart: $e");
+  }
+}
+
+// --- ফোন থেকে কার্ট লোড করার ফাংশন ---
+Future<void> loadCartFromPrefs() async {
+  try {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? encodedCart = prefs.getString('saved_cart');
+    if (encodedCart != null) {
+      List<dynamic> decoded = json.decode(encodedCart);
+      cartItems = decoded.map((item) => Map<String, dynamic>.from(item)).toList();
+      cartUpdateNotifier.value++; 
+    }
+  } catch (e) {
+    print("Error loading cart: $e");
+  }
+}
 
 // গ্লোবাল ফাংশন কার্টে যোগ করার জন্য
 void globalAddToCart(dynamic med, BuildContext context) {
@@ -47,6 +72,7 @@ void globalAddToCart(dynamic med, BuildContext context) {
     }); 
   }
   cartUpdateNotifier.value++;
+  saveCartToPrefs();
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${med['name']} কার্টে যোগ করা হয়েছে"), duration: const Duration(seconds: 1)));
 }
 
@@ -54,6 +80,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SharedPreferences prefs = await SharedPreferences.getInstance();
   String? token = prefs.getString('token');
+
+  await loadCartFromPrefs(); 
   
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
@@ -568,12 +596,6 @@ class _CartScreenState extends State<CartScreen> {
  Future<void> handlePlaceOrder() async {
   double total = getSubtotal();
 
-  if (total < 1000) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("কমপক্ষে ১০০০ টাকার অর্ডার করতে হবে। আরও ${(1000 - total).toStringAsFixed(0)} টাকার পণ্য যোগ করুন।"))
-    );
-    return;
-  }
 
   if (addrController.text.trim().isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ঠিকানা লিখুন")));
@@ -636,6 +658,7 @@ class _CartScreenState extends State<CartScreen> {
         cartItems.clear();
         cartUpdateNotifier.value++;
       });
+       saveCartToPrefs();
       _showSuccessDialog();
     } else {
       // সার্ভার থেকে আসা সঠিক এরর মেসেজ দেখানো
@@ -714,7 +737,6 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // --- কার্ট আইটেম ডিজাইন ---
   Widget _buildCartCard(int i) {
     var item = cartItems[i];
     return Container(
@@ -732,9 +754,33 @@ class _CartScreenState extends State<CartScreen> {
             ]),
           ),
           Row(children: [
-            IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => setState(() { if (item['quantity'] > 1) item['quantity']--; else cartItems.removeAt(i); cartUpdateNotifier.value++; })),
+            // মাইনাস (-) বাটন
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline), 
+              onPressed: () {
+                setState(() { 
+                  if (item['quantity'] > 1) {
+                    item['quantity']--; 
+                  } else {
+                    cartItems.removeAt(i); 
+                  }
+                  cartUpdateNotifier.value++; 
+                });
+                saveCartToPrefs(); // কার্ট ডাটা মেমোরিতে সেভ করা হলো
+              }
+            ),
             Text("${item['quantity']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-            IconButton(icon: const Icon(Icons.add_circle, color: logoRed), onPressed: () => setState(() { item['quantity']++; cartUpdateNotifier.value++; })),
+            // প্লাস (+) বাটন
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: logoRed), 
+              onPressed: () {
+                setState(() { 
+                  item['quantity']++; 
+                  cartUpdateNotifier.value++; 
+                });
+                saveCartToPrefs(); // কার্ট ডাটা মেমোরিতে সেভ করা হলো
+              }
+            ),
           ]),
         ],
       ),
@@ -773,7 +819,7 @@ class _CartScreenState extends State<CartScreen> {
             width: double.infinity,
             height: 55,
             child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: total >= 1000 ? logoRed : Colors.grey, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+              style: ElevatedButton.styleFrom(backgroundColor: logoRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
               onPressed: isPlacingOrder ? null : handlePlaceOrder,
               child: isPlacingOrder ? const CircularProgressIndicator(color: Colors.white) : const Text("PLACE ORDER", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ),
@@ -974,9 +1020,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                             ),
                             onPressed: () async {
-                              SharedPreferences p = await SharedPreferences.getInstance();
-                              await p.remove('token');
-                              if (context.mounted) Navigator.pushReplacementNamed(context, '/login');
+                            SharedPreferences p = await SharedPreferences.getInstance();
+                            await p.remove('token');
+                            await p.remove('saved_cart'); // ফোনের কার্ট মেমোরি ক্লিয়ার
+                            cartItems.clear(); // গ্লোবাল লিস্ট খালি করা
+                            cartUpdateNotifier.value = 0; // কার্ট ব্যাজ ০ করা
+                            if (context.mounted) Navigator.pushReplacementNamed(context, '/login');
                             },
                             icon: const Icon(Icons.logout_rounded),
                             label: const Text("LOGOUT ACCOUNT", style: TextStyle(fontWeight: FontWeight.bold)),
