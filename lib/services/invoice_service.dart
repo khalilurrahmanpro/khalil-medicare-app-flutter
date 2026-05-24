@@ -18,7 +18,7 @@ class InvoiceService {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        margin: const pw.EdgeInsets.all(12),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -31,33 +31,35 @@ class InvoiceService {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text("KHALIL MEDICARE", 
-                          style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
-                      pw.Text("Pharmacy Management System", style: const pw.TextStyle(fontSize: 10)),
+                          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.indigo900)),
+                      pw.Text("Pharmacy Management System", style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text("South paikpara,Zilpar,Mirpur", style: const pw.TextStyle(fontSize: 8)),
+                      pw.Text("Whats up", style: const pw.TextStyle(fontSize: 8)),
                     ],
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       pw.Text("INVOICE", 
-                          style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
+                          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
                       pw.Text("Order ID: #${order['id']}"),
                       pw.Text("Date: ${DateFormat('dd-MM-yyyy').format(DateTime.now())}"),
                     ],
                   ),
                 ],
               ),
-              pw.SizedBox(height: 30),
+              pw.SizedBox(height: 10),
 
               pw.Text("BILL TO:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               pw.Text("Name: ${order['username'] ?? 'N/A'}"),
               pw.Text("Address: ${order['address'] ?? 'N/A'}"),
-              pw.SizedBox(height: 20),
+              pw.SizedBox(height: 10),
 
               // --- Table Section (আপনার রিকোয়েস্ট অনুযায়ী কলাম) ---
               pw.TableHelper.fromTextArray(
-                headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 10),
+                headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 6),
                 headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
-                cellHeight: 25,
+                cellHeight: 24,
                 columnWidths: {
                   0: const pw.FlexColumnWidth(3.0), // Name
                   1: const pw.FlexColumnWidth(1.5), // Box/Strip/Pata

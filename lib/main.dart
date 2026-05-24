@@ -212,7 +212,7 @@ class _MedicineListScreenState extends State<MedicineListScreen> {
   }
 
   void _makeCall() async {
-    const phone = "tel:+01700920629"; 
+    const phone = "tel:+8801700920629"; 
     if (await canLaunchUrl(Uri.parse(phone))) await launchUrl(Uri.parse(phone));
   }
 
