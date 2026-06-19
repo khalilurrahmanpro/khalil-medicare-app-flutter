@@ -7,13 +7,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'auth_screen.dart'; 
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/admin/admin_orders_screen.dart';
 import 'screens/admin/admin_medicine_screen.dart';
 
 // --- গ্লোবাল ভেরিয়েবল ---
 const Color logoRed = Color(0xFFD00000);
 const Color logoYellow = Color(0xFFFFC107);
-const String baseUrl = "https://khalil-medicare-app-backend.onrender.com/api"; 
+const String baseUrl = "https://khalil-medicare-app-backend.onrender.co/api"; 
+const String supabaseImageUrl = "https://ajcrgouxaamkhumnnkkq.supabase.co/storage/v1/object/public/medicine-images/";
+String getFullImageUrl(String? imagePath) {
+  if (imagePath == null || imagePath.isEmpty) {
+    return ""; 
+  }
+
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  String cleanPath = imagePath.replaceAll('/media/', '');
+
+  if (cleanPath.startsWith('/')) {
+    cleanPath = cleanPath.substring(1);
+  }
+  return "https://ajcrgouxaamkhumnnkkq.supabase.co/storage/v1/object/public/medicine-images/$cleanPath";
+}
 bool isBoxMode = true; 
 List<Map<String, dynamic>> cartItems = [];
 ValueNotifier<int> cartUpdateNotifier = ValueNotifier<int>(0);
@@ -78,6 +95,11 @@ void globalAddToCart(dynamic med, BuildContext context) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+   await Supabase.initialize(
+    url: 'https://ajcrgouxaamkhumnnkkq.supabase.co', 
+    anonKey: 'sb_publishable_j2S-x88rx1XPXtSZlTJHgA_jtCcF_7N',
+  );
+  await loadCartFromPrefs(); 
   SharedPreferences prefs = await SharedPreferences.getInstance();
   String? token = prefs.getString('token');
 
@@ -347,9 +369,13 @@ class _MedicineListScreenState extends State<MedicineListScreen> {
               ),
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Image.network(med['image'] ?? ''),
-                ),
+                padding: const EdgeInsets.all(8),
+                child: Image.network(
+                getFullImageUrl(med['image']),
+                fit: BoxFit.contain,
+                 errorBuilder: (c, e, s) => const Icon(Icons.medication, size: 40, color: logoRed),
+              ),
+              ),
               ),
             ),
           ),
@@ -428,6 +454,8 @@ class _MedicineListScreenState extends State<MedicineListScreen> {
   // --- গ্রিড প্রোডাক্ট কার্ড (কাটা দাম স্পষ্ট) ---
   Widget _buildProCard(dynamic med) {
     int stock = int.tryParse(med['stock_quantity'].toString()) ?? 0;
+    // আপনার ইমেজ উইজেটের ঠিক উপরে এটি লিখুন
+    print("Check URL: ${getFullImageUrl(med['image'])}");
     double boxP = double.tryParse(med['price'].toString()) ?? 0;
     double disc = isBoxMode ? (double.tryParse(med['box_discount'].toString()) ?? 0) : (double.tryParse(med['strip_discount'].toString()) ?? 0);
     double unitP = isBoxMode ? boxP : (boxP / (int.tryParse(med['strips_per_box'].toString()) ?? 1));
@@ -446,8 +474,13 @@ class _MedicineListScreenState extends State<MedicineListScreen> {
             child: Stack(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Center(child: Image.network(med['image'] ?? '', fit: BoxFit.contain)),
+                padding: const EdgeInsets.all(10),
+                child: Center(child: Image.network(
+                getFullImageUrl(med['image']), 
+                fit: BoxFit.contain,
+                errorBuilder: (c, e, s) => const Icon(Icons.medication, size: 50, color: Colors.grey),
+                ),
+                ),
                 ),
                 if (disc > 0)
                   Positioned(top: 8, left: 8, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: logoRed, borderRadius: BorderRadius.circular(6)), child: Text("${disc.toStringAsFixed(0)}% OFF", style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)))),
@@ -484,7 +517,7 @@ class _MedicineListScreenState extends State<MedicineListScreen> {
                       padding: EdgeInsets.zero
                     ),
                     onPressed: stock > 0 ? () => globalAddToCart(med, context) : null,
-                    child: Text(stock > 0 ? "ADD" : "OUT", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: Text(stock > 0 ? "Add to cart" : "Out of stock", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -533,7 +566,11 @@ class _MedicineDetailScreenState extends State<MedicineDetailScreen> {
             Container(
               height: 250, width: double.infinity, color: Colors.white,
               child: image.isNotEmpty 
-                ? Image.network(image, fit: BoxFit.contain, errorBuilder: (c,e,s) => Icon(Icons.image_not_supported, size: 100, color: Colors.grey))
+                ? Image.network(
+                    getFullImageUrl(image), 
+                    fit: BoxFit.contain, 
+                    errorBuilder: (c, e, s) => const Icon(Icons.image_not_supported, size: 100, color: Colors.grey),
+                   )
                 : Icon(Icons.image_not_supported, size: 100, color: Colors.grey),
             ),
             Padding(
@@ -912,7 +949,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String username = nameController.text.isEmpty ? "User" : nameController.text;
     
     // ইমেজ ইউআরএল চেক করা
-    String? profileImageUrl = user?['image']; 
+    String? imageName = user?['image']; 
+    String? profileImageUrl = (imageName != null && imageName.isNotEmpty) 
+    ? supabaseImageUrl + imageName 
+    : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -1282,7 +1322,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
           : ListView.builder(
               itemCount: products.length,
               itemBuilder: (context, i) => ListTile(
-                leading: Image.network(products[i]['image'] ?? '', width: 50, errorBuilder: (c,e,s)=>const Icon(Icons.medication)),
+                leading: Image.network(getFullImageUrl(products[i]['image']), width: 50, errorBuilder: (c, e, s) => const Icon(Icons.medication)),
                 title: Text(products[i]['name']),
                 subtitle: Text("৳${products[i]['price']}"),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => MedicineDetailScreen(medicine: products[i]))),

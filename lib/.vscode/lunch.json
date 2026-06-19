@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Khalil Medicare Web",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "--dart-define=FLUTTER_WEB_RENDERER=html",
+                "--web-browser-flag=--disable-web-security"
+            ]
+        }
+    ]
+}
