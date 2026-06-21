@@ -14,7 +14,7 @@ import 'screens/admin/admin_medicine_screen.dart';
 // --- গ্লোবাল ভেরিয়েবল ---
 const Color logoRed = Color(0xFFD00000);
 const Color logoYellow = Color(0xFFFFC107);
-const String baseUrl = "https://khalil-medicare-app-backend.onrender.co/api"; 
+const String baseUrl = "https://khalil-medicare-app-backend.onrender.com/api"; 
 const String supabaseImageUrl = "https://ajcrgouxaamkhumnnkkq.supabase.co/storage/v1/object/public/medicine-images/";
 String getFullImageUrl(String? imagePath) {
   if (imagePath == null || imagePath.isEmpty) {
@@ -142,10 +142,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     
     if (res.statusCode == 200) {
       final userData = json.decode(res.body);
-      print("Current User: ${userData['username']}"); // এটি ল্যাপটপের কনসোলে চেক করুন
+      print("Current User: ${userData['username']}");
       
       setState(() { 
-  isAdmin = (userData['username'].toString().toLowerCase() == 'kha_lil_medi_care' || 
+  String currentUsername = userData['username'].toString().toLowerCase();
+  isAdmin = (currentUsername == 'kha_lil_medi_care' || 
              userData['is_superuser'] == true); 
 });
     }
