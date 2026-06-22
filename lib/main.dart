@@ -621,6 +621,36 @@ class _CartScreenState extends State<CartScreen> {
   String selectedPayment = "Cash on Delivery";
   bool isPlacingOrder = false;
 
+   @override
+  void initState() {
+    super.initState();
+    _loadProfileAddress(); // স্ক্রিন ওপেন হওয়ার সময় অ্যাড্রেস লোড হবে
+  }
+
+  Future<void> _loadProfileAddress() async {
+    try {
+      SharedPreferences p = await SharedPreferences.getInstance();
+      String? token = p.getString('token');
+      
+      final res = await http.get(
+        Uri.parse("$baseUrl/profile/"),
+        headers: {'Authorization': 'Token $token'},
+      );
+
+      if (res.statusCode == 200) {
+        final userData = json.decode(res.body);
+        setState(() {
+          // যদি প্রোফাইলে অ্যাড্রেস থাকে, তবে সেটি টেক্সট বক্সে বসিয়ে দাও
+          if (userData['address'] != null && userData['address'].toString().isNotEmpty) {
+            addrController.text = userData['address'].toString();
+          }
+        });
+      }
+    } catch (e) {
+      print("Error loading default address: $e");
+    }
+  }
+
   // সর্বমোট দাম বের করার ফাংশন
   double getSubtotal() {
     double total = 0;
