@@ -664,12 +664,6 @@ class _CartScreenState extends State<CartScreen> {
  Future<void> handlePlaceOrder() async {
   double total = getSubtotal();
 
-
-  if (addrController.text.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ঠিকানা লিখুন")));
-    return;
-  }
-
   setState(() => isPlacingOrder = true);
 
   try {
