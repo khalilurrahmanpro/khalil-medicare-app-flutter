@@ -129,7 +129,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAdminStatus(); 
+    _checkAdminStatus();
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) checkAppUpdate(context);
+    }); 
   }
 
   Future<void> _checkAdminStatus() async {
@@ -152,6 +155,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   } catch (e) { print("Error checking admin: $e"); }
 }
+
+Future<void> checkAppUpdate(BuildContext context) async {
+    try {
+      final response = await http.get(Uri.parse("$baseUrl/check-update/"));
+      if (response.statusCode == 200) {
+        var data = json.decode(response.body);
+        String myCurrentAppVersion = "1.1.0"; 
+
+        if (data['version'] != myCurrentAppVersion) {
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Text("নতুন আপডেট এসেছে!"),
+                content: const Text("সবকিছু ঠিকঠাক চালাতে দয়া করে অ্যাপটি আপডেট করুন।"),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      await launchUrl(Uri.parse(data['url']), mode: LaunchMode.externalApplication);
+                    },
+                    child: const Text("আপডেট করুন"),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) { print("Update check error: $e"); }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -617,39 +651,8 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final addrController = TextEditingController();
   String selectedPayment = "Cash on Delivery";
   bool isPlacingOrder = false;
-
-   @override
-  void initState() {
-    super.initState();
-    _loadProfileAddress(); // স্ক্রিন ওপেন হওয়ার সময় অ্যাড্রেস লোড হবে
-  }
-
-  Future<void> _loadProfileAddress() async {
-    try {
-      SharedPreferences p = await SharedPreferences.getInstance();
-      String? token = p.getString('token');
-      
-      final res = await http.get(
-        Uri.parse("$baseUrl/profile/"),
-        headers: {'Authorization': 'Token $token'},
-      );
-
-      if (res.statusCode == 200) {
-        final userData = json.decode(res.body);
-        setState(() {
-          // যদি প্রোফাইলে অ্যাড্রেস থাকে, তবে সেটি টেক্সট বক্সে বসিয়ে দাও
-          if (userData['address'] != null && userData['address'].toString().isNotEmpty) {
-            addrController.text = userData['address'].toString();
-          }
-        });
-      }
-    } catch (e) {
-      print("Error loading default address: $e");
-    }
-  }
 
   // সর্বমোট দাম বের করার ফাংশন
   double getSubtotal() {
@@ -661,82 +664,60 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // --- অর্ডার প্লেস করার মেইন ফাংশন ---
- Future<void> handlePlaceOrder() async {
-  double total = getSubtotal();
+  Future<void> handlePlaceOrder() async {
+    double total = getSubtotal();
 
-  setState(() => isPlacingOrder = true);
+    setState(() => isPlacingOrder = true);
 
-  try {
-    SharedPreferences p = await SharedPreferences.getInstance();
-    String? token = p.getString('token');
+    try {
+      SharedPreferences p = await SharedPreferences.getInstance();
+      String? token = p.getString('token');
 
-    // ব্যাকএন্ডের জন্য ডেটা ফরম্যাট তৈরি
-    Map<String, dynamic> orderData = {
-      "medicine_names": cartItems.map((m) => "${m['name']} (${m['unit']} x ${m['quantity']})").join(", "),
-      "items": cartItems.map((e) {
+      Map<String, dynamic> orderData = {
+        "medicine_names": cartItems.map((m) => "${m['name']} (${m['unit']} x ${m['quantity']})").join(", "),
+        "items": cartItems.map((e) {
+          String unitName = e['unit']?.toString() ?? "Piece";
+          return {
+            "name": e['name'].toString(),
+            "quantity": e['quantity'],
+            "unit_type": unitName,
+            "price": e['final_price'].toString(),
+          };
+        }).toList(),
+        "total_price": total.toStringAsFixed(2),
+        "address": "USE_PROFILE_ADDRESS", 
+        "payment_method": selectedPayment,
+      };
 
-  // ===== UNIT SAFE FIX =====
-  String unitName = "Piece";
-
-  if (e['unit'] != null &&
-      e['unit'].toString().trim().isNotEmpty) {
-    unitName = e['unit'].toString();
-  } else if (e['unit_type'] != null &&
-      e['unit_type'].toString().trim().isNotEmpty) {
-    unitName = e['unit_type'].toString();
-  } else if (e['selected_unit'] != null &&
-      e['selected_unit'].toString().trim().isNotEmpty) {
-    unitName = e['selected_unit'].toString();
-  }
-
-  return {
-    "name": e['name'].toString(),
-    "quantity": e['quantity'],
-    "unit": unitName,
-    "unit_type": unitName,
-    "price": e['final_price'].toString(),
-  };
-}).toList(),
-      "total_price": total.toStringAsFixed(2), // Double কে String এ কনভার্ট করে পাঠানো নিরাপদ
-      "address": addrController.text.trim(),
-      "payment_method": selectedPayment,
-    };
-
-    final res = await http.post(
-      Uri.parse("$baseUrl/place-order/"),
-      headers: {
-        'Authorization': 'Token $token',
-        'Content-Type': 'application/json',
-      },
-      body: json.encode(orderData),
-    );
-
-    // ডিবাগিং এর জন্য এগুলো প্রিন্ট করুন
-    print("Response Status: ${res.statusCode}");
-    print("Response Body: ${res.body}"); // এখানে সার্ভার বলবে কেন 400 এসেছে
-
-    if (res.statusCode == 201 || res.statusCode == 200) {
-      setState(() {
-        cartItems.clear();
-        cartUpdateNotifier.value++;
-      });
-       saveCartToPrefs();
-      _showSuccessDialog();
-    } else {
-      // সার্ভার থেকে আসা সঠিক এরর মেসেজ দেখানো
-      var errorData = json.decode(res.body);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${errorData.toString()}"), backgroundColor: Colors.red),
+      final res = await http.post(
+        Uri.parse("$baseUrl/place-order/"),
+        headers: {
+          'Authorization': 'Token $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(orderData),
       );
-    }
-  } catch (e) {
-    print("Error placing order: $e");
-  } finally {
-    if (mounted) setState(() => isPlacingOrder = false);
-  }
-}
 
-  // --- সাকসেস ডায়ালগ ডিজাইন ---
+      if (res.statusCode == 201 || res.statusCode == 200) {
+        setState(() {
+          cartItems.clear();
+          cartUpdateNotifier.value++;
+        });
+        saveCartToPrefs();
+        _showSuccessDialog();
+      } else {
+        var errorData = json.decode(res.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${errorData.toString()}"), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      print("Error placing order: $e");
+    } finally {
+      if (mounted) setState(() => isPlacingOrder = false);
+    }
+  }
+
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -748,24 +729,12 @@ class _CartScreenState extends State<CartScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-                child: const Icon(Icons.check, color: Colors.white, size: 60),
-              ),
+              Container(padding: const EdgeInsets.all(15), decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle), child: const Icon(Icons.check, color: Colors.white, size: 60)),
               const SizedBox(height: 20),
-              const Text("thanks a lot!", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green)),
-              const SizedBox(height: 10),
-              const Text("Your order submitted successfull", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+              const Text("Thanks a lot!", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green)),
+              const Text("Your order submitted successfully", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 25),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("ok"),
-                ),
-              )
+              SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white), onPressed: () => Navigator.pop(context), child: const Text("OK")))
             ],
           ),
         ),
@@ -809,47 +778,17 @@ class _CartScreenState extends State<CartScreen> {
         children: [
           Container(height: 60, width: 60, decoration: BoxDecoration(color: logoRed.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.medication, color: logoRed)),
           const SizedBox(width: 15),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text("৳${item['final_price']} / ${item['unit']}", style: const TextStyle(color: logoRed, fontWeight: FontWeight.bold)),
-            ]),
-          ),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), Text("৳${item['final_price']} / ${item['unit']}", style: const TextStyle(color: logoRed, fontWeight: FontWeight.bold))])),
           Row(children: [
-            // মাইনাস (-) বাটন
-            IconButton(
-              icon: const Icon(Icons.remove_circle_outline), 
-              onPressed: () {
-                setState(() { 
-                  if (item['quantity'] > 1) {
-                    item['quantity']--; 
-                  } else {
-                    cartItems.removeAt(i); 
-                  }
-                  cartUpdateNotifier.value++; 
-                });
-                saveCartToPrefs(); // কার্ট ডাটা মেমোরিতে সেভ করা হলো
-              }
-            ),
+            IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () { setState(() { if (item['quantity'] > 1) item['quantity']--; else cartItems.removeAt(i); cartUpdateNotifier.value++; }); saveCartToPrefs(); }),
             Text("${item['quantity']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-            // প্লাস (+) বাটন
-            IconButton(
-              icon: const Icon(Icons.add_circle, color: logoRed), 
-              onPressed: () {
-                setState(() { 
-                  item['quantity']++; 
-                  cartUpdateNotifier.value++; 
-                });
-                saveCartToPrefs(); // কার্ট ডাটা মেমোরিতে সেভ করা হলো
-              }
-            ),
+            IconButton(icon: const Icon(Icons.add_circle, color: logoRed), onPressed: () { setState(() { item['quantity']++; cartUpdateNotifier.value++; }); saveCartToPrefs(); }),
           ]),
         ],
       ),
     );
   }
 
-  // --- চেকআউট সেকশন ডিজাইন ---
   Widget _buildCheckoutSection() {
     double total = getSubtotal();
     return Container(
@@ -858,9 +797,6 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(controller: addrController, decoration: const InputDecoration(hintText: "Please add your address", prefixIcon: Icon(Icons.location_on, color: logoRed))),
-          const SizedBox(height: 15),
-          // পেমেন্ট অপশনস
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: ["Cash on Delivery", "bKash", "Nagad"].map((p) => ChoiceChip(
