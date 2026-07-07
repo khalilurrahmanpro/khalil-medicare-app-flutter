@@ -797,15 +797,14 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ["Cash on Delivery", "bKash", "Nagad"].map((p) => ChoiceChip(
-              label: Text(p),
-              selected: selectedPayment == p,
-              onSelected: (v) => setState(() => selectedPayment = p),
-              selectedColor: logoRed,
-              labelStyle: TextStyle(color: selectedPayment == p ? Colors.white : Colors.black),
-            )).toList(),
+          // পেমেন্ট অপশন রিমুভ করা হয়েছে
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+               Icon(Icons.local_shipping, color: logoRed),
+               SizedBox(width: 8),
+               Text("Payment: Cash on Delivery", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
           ),
           const SizedBox(height: 15),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
