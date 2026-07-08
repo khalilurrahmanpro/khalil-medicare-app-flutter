@@ -879,7 +879,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       String? token = prefs.getString('token');
       
       final res = await http.put(
-        Uri.parse("$baseUrl/profile/"),
+        Uri.parse("$baseUrl/profile/update"),
         headers: {
           'Authorization': 'Token $token',
           'Content-Type': 'application/json',
